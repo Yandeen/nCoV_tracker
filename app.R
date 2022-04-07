@@ -8,8 +8,8 @@
 
 # update data with automated script
 #source("jhu_data_daily_cases.R") # option to update daily cases
-source("jhu_data_weekly_cases.R") # run locally to update numbers, but not live on Rstudio server /Users/epp11/Dropbox (VERG)/GitHub/nCoV_tracker/app.R(to avoid possible errors on auto-updates)
-source("ny_data_us.R") # run locally to update numbers, but not live on Rstudio server (to avoid possible errors on auto-updates)
+#source("jhu_data_weekly_cases.R") # run locally to update numbers, but not live on Rstudio server /Users/epp11/Dropbox (VERG)/GitHub/nCoV_tracker/app.R(to avoid possible errors on auto-updates)
+#source("ny_data_us.R") # run locally to update numbers, but not live on Rstudio server (to avoid possible errors on auto-updates)
 
 # load required packages
 if(!require(magrittr)) install.packages("magrittr", repos = "http://cran.us.r-project.org")
@@ -371,6 +371,7 @@ sars_max_date = max(sars_cases$date)
 sars_max_date_clean = format(as.POSIXct(sars_max_date),"%d %B %Y")
 
 # merge sars data with country data and extract key summary variables
+names(sars_cases)[1] <- "country"
 sars_cases = merge(sars_cases, countries, by = "country")
 sars_cases = sars_cases[order(sars_cases$date),]
 sars_cases$cases_per_million = as.numeric(format(round(sars_cases$cases/(sars_cases$population/1000000),1),nsmall=1))
@@ -385,8 +386,11 @@ sars_plot_map <- worldcountry[worldcountry$ADM0_A3 %in% sars_large_countries$alp
 # create plotting parameters for sars map
 sars_pal <- colorBin("Blues", domain = sars_large_countries$cases_per_million, bins = bins)
 
+names(ebola_cases)[1] <- "country"
+names(h1n1_cases)[1] <- "region"
+
 # creat sars interactive map (needs to include polygons and circles as slider input not recognised upon initial loading)
-sars_basemap = leaflet(sars_plot_map) %>% 
+sars_basemap<- leaflet(sars_plot_map) %>% 
   addTiles() %>% 
   addLayersControl(
     position = "bottomright",
@@ -394,45 +398,40 @@ sars_basemap = leaflet(sars_plot_map) %>%
     options = layersControlOptions(collapsed = FALSE)) %>% 
   hideGroup(c("2019-COVID", "2009-H1N1 (swine flu)", "2014-Ebola"))  %>%
   addProviderTiles(providers$CartoDB.Positron) %>%
-  fitBounds(~-100,-60,~60,70) %>%
-  
-  addPolygons(stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.4, fillColor = ~sars_pal(sars_large_countries$cases_per_million), group = "2003-SARS (cumulative)",
+  fitBounds(~-100,-60,~60,70)  %>%
+    addPolygons(stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.4, fillColor = ~sars_pal(sars_large_countries$cases_per_million), group = "2003-SARS (cumulative)",
               label = sprintf("<strong>%s</strong><br/>SARS cases: %g<br/>Deaths: %d<br/>Cases per million: %g", sars_large_countries$country, sars_large_countries$cases, sars_large_countries$deaths, sars_large_countries$cases_per_million) %>% lapply(htmltools::HTML),
               labelOptions = labelOptions(
                 style = list("font-weight" = "normal", padding = "3px 8px", "color" = sars_col),
                 textsize = "15px", direction = "auto")) %>%
-  
-  addCircleMarkers(data = sars_final, lat = ~ latitude, lng = ~ longitude, weight = 1, radius = ~(cases)^(1/4), 
+    addCircleMarkers(data = sars_final, lat = ~ latitude, lng = ~ longitude, weight = 1, radius = ~(cases)^(1/4), 
                    fillOpacity = 0.2, color = sars_col, group = "2003-SARS (cumulative)",
                    label = sprintf("<strong>%s</strong><br/>SARS cases: %g<br/>Deaths: %d<br/>Cases per million: %g", sars_final$country, sars_final$cases, sars_final$deaths, sars_final$cases_per_million) %>% lapply(htmltools::HTML),
                    labelOptions = labelOptions(
                      style = list("font-weight" = "normal", padding = "3px 8px", "color" = sars_col),
                      textsize = "15px", direction = "auto")) %>%
-  
-  addCircleMarkers(data = cv_today, lat = ~ latitude, lng = ~ longitude, weight = 1, radius = ~(cases)^(1/5.5),
+    addCircleMarkers(data = cv_today, lat = ~ latitude, lng = ~ longitude, weight = 1, radius = ~(cases)^(1/5.5),
                    fillOpacity = 0.2, color = covid_col, group = "2019-COVID",
                    label = sprintf("<strong>%s (cumulative)</strong><br/>Confirmed cases: %g<br/>Deaths: %d<br/>Cases per million: %g", cv_today$country, cv_today$cases, cv_today$deaths, cv_today$cases_per_million) %>% lapply(htmltools::HTML),
                    labelOptions = labelOptions(
                      style = list("font-weight" = "normal", padding = "3px 8px", "color" = covid_col),
-                     textsize = "15px", direction = "auto"))  %>%
-  
-  addCircleMarkers(data = h1n1_cases, lat = ~ latitude, lng = ~ longitude, weight = 1, radius = ~(projected_deaths)^(1/4),
+                     textsize = "15px", direction = "auto")) %>%
+    addCircleMarkers(data = h1n1_cases, lat = ~ latitude, lng = ~ longitude, weight = 1, radius = ~(projected_deaths)^(1/4),
                    fillOpacity = 0.2, color = h1n1_col, group = "2009-H1N1 (swine flu)",
                    label = sprintf("<strong>%s</strong><br/>H1N1 deaths (confirmed): %g<br/>H1N1 deaths (estimated): %g", h1n1_cases$region, h1n1_cases$deaths, h1n1_cases$projected_deaths) %>% lapply(htmltools::HTML),
                    labelOptions = labelOptions(
                      style = list("font-weight" = "normal", padding = "3px 8px", "color" = h1n1_col),
                      textsize = "15px", direction = "auto")) %>%
-  
-  addCircleMarkers(data = ebola_cases, lat = ~ latitude, lng = ~ longitude, weight = 1, radius = ~(cases)^(1/4),
+    addCircleMarkers(data = ebola_cases, lat = ~ latitude, lng = ~ longitude, weight = 1, radius = ~(cases)^(1/4),
                    fillOpacity = 0.2, color = ebola_col, group = "2014-Ebola",
                    label = sprintf("<strong>%s</strong><br/>Ebola cases: %g<br/>Deaths: %d", ebola_cases$country, ebola_cases$cases, ebola_cases$deaths) %>% lapply(htmltools::HTML),
                    labelOptions = labelOptions(
                      style = list("font-weight" = "normal", padding = "3px 8px", "color" = ebola_col),
-                     textsize = "15px", direction = "auto")) 
+                     textsize = "15px", direction = "auto"))
 
 # sum sars case counts by date
-sars_aggregated = aggregate(sars_cases$cases, by=list(Category=sars_cases$date), FUN=sum)
-names(sars_aggregated) = c("date", "cases")
+sars_aggregated <- aggregate(sars_cases$cases, by=list(Category=sars_cases$date), FUN=sum)
+names(sars_aggregated) <-  c("date", "cases")
 
 # add variable for new sars cases in last 7 days
 for (i in 1:nrow(sars_aggregated)) { 
@@ -468,7 +467,6 @@ ui <- bootstrapPage(
   navbarPage(theme = shinytheme("flatly"), collapsible = TRUE,
              HTML('<a style="text-decoration:none;cursor:default;color:#FFFFFF;" class="active" href="#">COVID-19 tracker</a>'), id="nav",
              windowTitle = "COVID-19 tracker",
-             
              tabPanel("COVID-19 mapper",
                       div(class="outer",
                           tags$head(includeCSS("styles.css")),
@@ -734,7 +732,8 @@ server = function(input, output, session) {
     basemap
   })
   
-  observeEvent(input$plot_date, {
+
+    observeEvent(input$plot_date, {
     leafletProxy("mymap") %>% 
       clearMarkers() %>%
       clearShapes() %>%
